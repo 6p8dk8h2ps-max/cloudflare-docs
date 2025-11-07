@@ -62,16 +62,6 @@ import * as codeOwnersUtils from "codeowners-utils";
 					assignees.add(owner.replace(/^@/, ""));
 				}
 			}
-		}
-		console.log("Assignees are:");
-		console.log(assignees);
-
-		if (assignees.size === 0) {
-			// assign folks which will manually reassign
-			["haleycode", "pedrosousa", "dcpena", "patriciasantaana"].forEach(
-				(username) => assignees.add(username),
-			);
-		}
 
 		const client = github.getOctokit(token);
 
