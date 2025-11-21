@@ -9,7 +9,55 @@ sidebar:
 
 import { Render, TypeScriptExample } from "~/components";
 
-Your Agent can connect to external [Model Context Protocol (MCP)](https://modelcontextprotocol.io) servers to access tools, resources, and prompts. The `Agent` class provides three methods to manage MCP connections:
+Your Agent can connect to external [Model Context Protocol (MCP)](https://modelcontextprotocol.io) servers to access tools, resources, and prompts. The `Agent` class provides three methods to manage MCP connections.
+
+## MCPConnectionState Enum
+
+The `MCPConnectionState` enum defines the possible states of an MCP server connection:
+
+```ts
+import { MCPConnectionState } from "agents";
+
+MCPConnectionState.AUTHENTICATING // "authenticating" - Waiting for OAuth authorization
+MCPConnectionState.CONNECTING     // "connecting" - Establishing transport connection
+MCPConnectionState.DISCOVERING    // "discovering" - Discovering server capabilities
+MCPConnectionState.READY          // "ready" - Fully connected and ready to use
+MCPConnectionState.FAILED         // "failed" - Connection failed
+```
+
+The connection state machine follows these transitions:
+
+- **Non-OAuth flow**: `CONNECTING` → `DISCOVERING` → `READY`
+- **OAuth flow**: `AUTHENTICATING` → (callback) → `CONNECTING` → `DISCOVERING` → `READY`
+- **Error**: Any state can transition to `FAILED` on error
+
+Use these constants instead of string literals when checking connection states.
+
+### Migration from String Literals
+
+If you were previously using string literals to check connection states, update your code to use the enum:
+
+<TypeScriptExample>
+
+```ts title="Before"
+// Old approach with string literals
+if (server.state === "ready") {
+	console.log("Server is ready");
+}
+```
+
+```ts title="After"
+// New approach with MCPConnectionState enum
+import { MCPConnectionState } from "agents";
+
+if (server.state === MCPConnectionState.READY) {
+	console.log("Server is ready");
+}
+```
+
+</TypeScriptExample>
+
+## Agent MCP Client Methods Example
 
 <TypeScriptExample>
 
@@ -183,6 +231,8 @@ None.
 An `MCPServersState` object containing:
 
 ```ts
+import { MCPConnectionState } from "agents";
+
 {
 	servers: Record<
 		string,
@@ -190,12 +240,7 @@ An `MCPServersState` object containing:
 			name: string;
 			server_url: string;
 			auth_url: string | null;
-			state:
-				| "authenticating"
-				| "connecting"
-				| "ready"
-				| "discovering"
-				| "failed";
+			state: MCPConnectionState;
 			capabilities: ServerCapabilities | null;
 			instructions: string | null;
 		}
@@ -228,7 +273,31 @@ export class MyAgent extends Agent<Env, never> {
 
 </TypeScriptExample>
 
-The `state` field can be: `authenticating`, `connecting`, `ready`, `discovering`, or `failed`. Use this method to monitor connection status, list available tools, or build UI for connected servers.
+Use this method to monitor connection status, list available tools, or build UI for connected servers. Check the connection state using the `MCPConnectionState` enum:
+
+<TypeScriptExample>
+
+```ts title="src/index.ts"
+import { MCPConnectionState } from "agents";
+
+export class MyAgent extends Agent<Env, never> {
+	async onRequest(request: Request): Promise<Response> {
+		const mcpState = this.getMcpServers();
+
+		for (const [id, server] of Object.entries(mcpState.servers)) {
+			if (server.state === MCPConnectionState.READY) {
+				console.log(`Server ${id} is ready`);
+			} else if (server.state === MCPConnectionState.AUTHENTICATING) {
+				console.log(`Server ${id} needs authentication`);
+			}
+		}
+
+		return new Response("OK");
+	}
+}
+```
+
+</TypeScriptExample>
 
 ## OAuth Configuration
 

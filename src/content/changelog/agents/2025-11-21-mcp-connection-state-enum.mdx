@@ -1,0 +1,68 @@
+---
+title: MCPConnectionState enum for improved type safety
+description: MCP connection states are now defined using an enum for better type safety and reliability, with improved error handling and fail-fast behavior
+products:
+  - agents
+  - workers
+date: 2025-11-21
+---
+
+The Agents SDK now exports an `MCPConnectionState` enum that provides better type safety and consistency when working with MCP server connection states.
+
+### MCPConnectionState enum
+
+Connection states are now available as enum constants instead of string literals:
+
+```ts
+import { MCPConnectionState } from "agents";
+
+// Check connection states using enum constants
+if (server.state === MCPConnectionState.READY) {
+	console.log("Server is ready to use");
+}
+```
+
+Available states:
+
+- `MCPConnectionState.AUTHENTICATING` - Waiting for OAuth authorization to complete
+- `MCPConnectionState.CONNECTING` - Establishing transport connection to MCP server
+- `MCPConnectionState.DISCOVERING` - Discovering server capabilities (tools, resources, prompts)
+- `MCPConnectionState.READY` - Fully connected and ready to use
+- `MCPConnectionState.FAILED` - Connection failed at some point
+
+### Migration from string literals
+
+If you were using string literals to check connection states, update your code:
+
+```ts title="Before"
+if (server.state === "ready") {
+	// Do something
+}
+```
+
+```ts title="After"
+import { MCPConnectionState } from "agents";
+
+if (server.state === MCPConnectionState.READY) {
+	// Do something
+}
+```
+
+### Improved error handling
+
+MCP client connections now use fail-fast behavior with `Promise.all` instead of `Promise.allSettled`, providing quicker feedback when server capability discovery fails. The SDK also now only attempts to register capabilities that the server advertises, improving reliability and reducing unnecessary errors.
+
+### Updated connection flow
+
+The connection state machine has been refined:
+
+- **Non-OAuth servers**: `CONNECTING` → `DISCOVERING` → `READY`
+- **OAuth servers**: `AUTHENTICATING` → (callback) → `CONNECTING` → `DISCOVERING` → `READY`
+- **Errors**: Any state can transition to `FAILED` on error
+
+### Additional improvements
+
+- MCP server state broadcasts now occur before and after OAuth connection establishment, providing better real-time updates to connected clients
+- Connection state is set to `FAILED` before throwing errors during capability discovery, ensuring proper state management
+
+For more information, refer to the [McpClient API reference](/agents/model-context-protocol/mcp-client-api/).
